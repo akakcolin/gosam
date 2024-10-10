@@ -14,20 +14,20 @@ def rodrigues(a, angle, verbose=False):
     a /= sqrt(inner(a, a)) # make unit vector
     #assert abs(sin_angle - sin(acos(cos_angle))) < 1e-6
     if verbose:
-        print "rotation angle:", degrees(angle)
-        print "rotation axis:", a
+        print("rotation angle:", degrees(angle))
+        print("rotation axis:", a)
     omega = array([[   0., -a[2],  a[1]],
                    [ a[2],    0., -a[0]],
                    [-a[1],  a[0],    0.]])
     rm = (identity(3) + omega * sin(angle)
                             + dot(omega, omega) * (1 - cos(angle)))
     if verbose:
-        print "rotation matrix:", rm
+        print("rotation matrix:", rm)
     return rm
 
 
 def print_matrix(text, M):
-    print "%s (det=%s):\n%s" % (text, linalg.det(M), M)
+    print("{0} (det={1}):\n{2}".format(text, linalg.det(M), M))
 
 
 def round_to_multiplicity(m, val):
@@ -47,7 +47,7 @@ class StdDev:
         self.S = 0.
 
     def __str__(self):
-        return "%s +- %s" % (self.mean, self.get_stddev())
+        return "{0} +- {1}".format(self.mean, self.get_stddev())
 
     def get_variance(self):
         return self.S / (self.n - 1)

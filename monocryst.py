@@ -3,7 +3,7 @@
 # Licence: GNU General Public License version 2
 
 import sys
-from math import sin, cos, sqrt, degrees, radians, asin
+from math import sin, cos, pi, atan, sqrt, degrees, radians, asin, acos
 from copy import deepcopy
 from optparse import OptionParser
 from numpy import dot, array, identity, minimum, maximum
@@ -11,8 +11,9 @@ from numpy import dot, array, identity, minimum, maximum
 import graingen
 import latt
 import mdprim
-import rotmat
-import utils
+from csl import find_orthorhombic_pbc
+from rotmat import round_to_multiplicity
+from utils import get_command_line
 
 def get_diamond_node_pos():
     node_pos = []
@@ -45,6 +46,15 @@ def make_bcc_lattice(symbol, a):
     node_atoms = [ (symbol, 0.0, 0.0, 0.0) ]
     return make_lattice(cell, node_pos, node_atoms)
 
+def make_hcp_lattice(symbol, a,c):
+    cell = latt.HexagonalUnitCell(a,c)
+    node_pos =graingen.hcp_nodes[:]
+    node_atoms = [
+            (symbol,0.5 ,-0.866,0.25),
+            (symbol,0.5 ,0.866,0.75),
+            ]
+    return make_lattice(cell,node_pos,node_atoms)
+
 
 def make_zincblende_lattice(symbols, a):
     assert len(symbols) == 2
@@ -58,9 +68,77 @@ def make_zincblende_lattice(symbols, a):
     ]
     return make_lattice(cell, node_pos, node_atoms)
 
+def make_zincblende2_lattice(symbols, a):
+    assert len(symbols) == 2
+    cell = latt.CubicUnitCell(a)
+    # nodes in unit cell (as fraction of unit cell parameters)
+    node_pos = graingen.fcc_nodes[:]
+    # atoms in node (as fraction of unit cell parameters)
+    node_atoms = [
+            (symbols[0], 0.0, 0.0, 0.0),
+            (symbols[1], 0.25, 0.75, 0.75),
+            ]
+    return make_lattice(cell, node_pos, node_atoms)
+
+
+def make_kesterite_structure(symbols, a, b, c):
+    assert len(symbols) == 4
+    cell = latt.OrthorhombicUnitCell(a,b,c)
+    # nodes in unit cell (as fraction of unit cell parameters)
+    node_pos = graingen.bcc_nodes[:]
+    # atoms in node (as fraction of unit cell parameters)
+    # (Cu In Ga Se)/(Cu Zn Ge S)
+    node_atoms = [
+            (symbols[0], 0.0, 0.0, 0.0),
+            (symbols[1], 0.5, 0.5, 0.0),
+            (symbols[0], 0.0, 0.5, 0.25),
+            (symbols[2], 0.5, 0.0, 0.25),
+            (symbols[1], 0.0, 0.0, 0.5),
+            (symbols[0], 0.5, 0.5, 0.5),
+            (symbols[2], 0.0, 0.5, 0.75),
+            (symbols[0], 0.5, 0.0, 0.75),
+            (symbols[3], 0.25, 0.25, 0.125),
+            (symbols[3], 0.75, 0.75, 0.125),
+            (symbols[3], 0.25, 0.75, 0.375),
+            (symbols[3], 0.75, 0.25, 0.375),
+            (symbols[3], 0.25, 0.25, 0.625),
+            (symbols[3], 0.75, 0.75, 0.625),
+            (symbols[3], 0.25, 0.75, 0.875),
+            (symbols[3], 0.75, 0.25, 0.875)
+            ]
+    return make_lattice(cell, node_pos, node_atoms)
+
+
+def make_stannite_structure(symbols, a, b, c):
+    assert len(symbols) == 4
+    cell = latt.OrthorhombicUnitCell(a,b,c)
+    # nodes in unit cell (as fraction of unit cell parameters)
+    node_pos = graingen.bcc_nodes[:]
+    # atoms in node (as fraction of unit cell parameters)
+    # (Cu In Ga Se)/(Cu Zn Ge S)
+    node_atoms = [
+            (symbols[0], 0.0, 0.0, 0.0),
+            (symbols[0], 0.5, 0.5, 0.0),
+            (symbols[1], 0.0, 0.5, 0.25),
+            (symbols[2], 0.5, 0.0, 0.25),
+            (symbols[0], 0.0, 0.0, 0.5),
+            (symbols[0], 0.5, 0.5, 0.5),
+            (symbols[2], 0.0, 0.5, 0.75),
+            (symbols[1], 0.5, 0.0, 0.75),
+            (symbols[3], 0.25, 0.25, 0.125),
+            (symbols[3], 0.75, 0.75, 0.125),
+            (symbols[3], 0.25, 0.75, 0.375),
+            (symbols[3], 0.75, 0.25, 0.375),
+            (symbols[3], 0.25, 0.25, 0.625),
+            (symbols[3], 0.75, 0.75, 0.625),
+            (symbols[3], 0.25, 0.75, 0.875),
+            (symbols[3], 0.75, 0.25, 0.875)
+            ]
+    return make_lattice(cell, node_pos, node_atoms)
+
 
 def make_sic_polytype_lattice(symbols, a, h, polytype):
-    """a: hexagonal lattice parameter 
+    """a: hexagonal lattice parameter
        h: distance between atomic layers
        polytype: a string like "AB" or "ABCACB",
     """
@@ -75,11 +153,54 @@ def make_sic_polytype_lattice(symbols, a, h, polytype):
     ]
     return make_lattice(cell, nodes, node_atoms)
 
+
+def make_c_hexagonal_lattice(symbol,a,h,polytype):
+    cell, nodes = graingen.generate_polytype(a=a, h=h, polytype=polytype)
+    node_atoms = [
+        (symbol[0], 0.0, 0.0, 0.0),
+        (symbol[0], 0.0, 0.0, 0.75/ len(polytype)),
+        ]
+    return make_lattice(cell,nodes,node_atoms)
+
+def make_mg_hexagonal_lattice(symbol, a, h, polytype):
+    cell, nodes = graingen.generate_polytype(a=a, h=h, polytype=polytype)
+    node_atoms = [
+        (symbol[0], 0.0, 0.0, 0.0),
+        (symbol[0], 0.0, 0.0, 0.75/ len(polytype)),
+        ]
+    return make_lattice(cell,nodes,node_atoms)
+
 def make_diamond_lattice(symbol, a):
     cell = latt.CubicUnitCell(a)
     node_pos = get_diamond_node_pos()
     node_atoms = [ (symbol, 0.0, 0.0, 0.0) ]
     return make_lattice(cell, node_pos, node_atoms)
+
+
+def make_nbo_lattice(symbols, a):
+    assert len(symbols) == 2
+    cell = latt.CubicUnitCell(a)
+    node_pos = graingen.fcc_nodes[:]
+    node_atoms = [
+        (symbols[0], 0.0, 0.0, 0.0),
+        (symbols[1], 0.5, 0.5, 0.5),
+        ]
+    return make_lattice(cell, node_pos, node_atoms)
+
+def make_crnb_lattice(symbols,a):
+    assert len(symbols) == 2
+    cell = latt.CubicUnitCell(a)
+    node_pos =graingen.fcc_nodes[:]
+    node_atoms = [
+        (symbols[1], 0.125, 0.125, 0.125),
+        (symbols[1], 0.875, 0.875, 0.875),
+        (symbols[0], 0.5, 0.5, 0.5),
+        (symbols[0], 0.5, 0.25, 0.25),
+        (symbols[0], 0.25, 0.5, 0.25),
+        (symbols[0], 0.25, 0.25, 0.5),
+        ]
+    return make_lattice(cell, node_pos, node_atoms)
+
 
 def make_nacl_lattice(symbols, a):
     assert len(symbols) == 2
@@ -90,6 +211,29 @@ def make_nacl_lattice(symbols, a):
         (symbols[1], 0.5, 0.5, 0.5),
     ]
     return make_lattice(cell, node_pos, node_atoms)
+
+
+def make_niti_lattice(symbols, a):
+    assert len(symbols) == 2
+    cell = latt.CubicUnitCell(a)
+    node_pos = graingen.simple_nodes[:]
+    node_atoms = [
+            (symbols[0], 0.0,0.0,0.0),
+            (symbols[1], 0.5,0.5,0.5),
+    ]
+    return make_lattice(cell, node_pos, node_atoms)
+
+def make_tial_lattice(symbols,a,b,c):
+    """ create TiAl LIO structure"""
+    assert len(symbols) == 2
+    cell = latt.OrthorhombicUnitCell(a,b,c)
+    node_pos = graingen.bcc_nodes[:]
+    node_atoms = [
+            (symbols[0], 0.0,0.0,0.0),
+            (symbols[1], 0.5,0.0,0.5),
+            ]
+    return make_lattice(cell,node_pos,node_atoms)
+
 
 # body centered tetragonal
 def make_bct_lattice(symbol, a, c):
@@ -124,9 +268,9 @@ class OrthorhombicPbcModel(graingen.FreshModel):
                           for z in self._min_max[2]]
 
     def _do_gen_atoms(self, vmin, vmax):
-        self._min_max = zip(vmin, vmax)
+        self._min_max = list(zip(vmin, vmax))
         self.compute_scope()
-        print self.get_scope_info()
+        print(self.get_scope_info())
         for node, abs_pos in self.get_all_nodes():
             for atom in node.atoms_in_node:
                 xyz = dot(abs_pos+atom.pos, self.unit_cell.M_1)
@@ -154,7 +298,7 @@ class RotatedMonocrystal(OrthorhombicPbcModel):
             self.unit_cell.rotate(self.rot_mat)
         self._do_gen_atoms(vmin, vmax)
         if upper is None:
-            print "Number of atoms in monocrystal: %i" % len(self.atoms)
+            print("Number of atoms in monocrystal: {}".format(len(self.atoms)))
         return self.atoms
 
     def get_box_to_fill(self, dim, upper, z_margin):
@@ -189,7 +333,8 @@ def test_rotmono_adjust():
     m = round(m_)
     new_th = 0.5 * asin(2.*n/m)
     new_d = m * a * cos(new_th)
-    print "theta =", degrees(new_th), "  d =", new_d
+    print("theta = {}".format(degrees(new_th)) + "  d = {}".format(new_d))
+
     dimensions[0] = new_d
     dimensions[1] = round(dimensions[1] / a) * a
     theta = new_th
@@ -205,7 +350,7 @@ def mono(lattice, nx, ny, nz):
     dim = [rotmat.round_to_multiplicity(min_dim[0], 10*nx),
            rotmat.round_to_multiplicity(min_dim[1], 10*ny),
            rotmat.round_to_multiplicity(min_dim[2], 10*nz)]
-    print "dimensions [A]:", dim[0], dim[1], dim[2]
+    print("dimensions [A]:", dim[0], dim[1], dim[2])
     config = RotatedMonocrystal(deepcopy(lattice), dim, rot_mat=None,
                                 title=utils.get_command_line())
     config.generate_atoms()
@@ -218,12 +363,42 @@ def get_named_lattice(name):
     name = name.lower()
     if name == "cu": # Cu (fcc, A1)
         lattice = make_fcc_lattice(symbol="Cu", a=3.615)
+    elif name == "al": # Al (fcc)
+        lattice = make_fcc_lattice(symbol="Al", a=4.041)
+    elif name == "ag": # Ag (fcc)
+        lattice = make_fcc_lattice(symbol="Ag", a=4.09)
+    elif name == "ni": # Ni (fcc)
+        lattice = make_fcc_lattice(symbol="Ni", a=3.52)
+    elif name == "pt" : # Pt (fcc)
+        lattice = make_fcc_lattice(symbol="Pt", a=3.92)
     elif name == "fe": # Fe (bcc, A2)
         lattice = make_bcc_lattice(symbol="Fe", a=2.87)
+    elif name == "nb": # Nb (bcc,B2)
+        lattice = make_bcc_lattice(symbol="Nb", a=3.308)
+    elif name == "w":
+        lattice = make_bcc_lattice(symbol="W", a=3.165)
     elif name == "po": # Polonium (sc, Ah)
         lattice = make_simple_cubic_lattice(symbol="Po", a=3.35)
     elif name == "nacl": # NaCl (B1)
         lattice = make_nacl_lattice(symbols=("Na","Cl"), a=5.64)
+    elif name =="niti": # NiTi (B2)
+        lattice = make_niti_lattice(symbols=("Ni","Ti"), a=3.008)
+    elif name == "cdte": # CdTe (zinc blende)
+        lattice = make_zincblende2_lattice(symbols=("Cd","Te"), a=4.321)
+    elif name == "cuznges": # Cu(In,Ga)Se2
+        lattice = make_kesterite_structure(symbols=("Cu","Zn","Ge","S"), a=5.358, b=5.358, c=10.641)
+    elif name == "cuznsnse": # Cu(In,Ga)Se2
+        lattice = make_stannite_structure(symbols=("Cu","Zn","Ge","S"), a=5.358, b=5.358, c=10.641)
+    elif name =="graphine": # graphine
+        lattice = make_c_hexagonal_lattice(symbol="C",a =3.07,h=2.52,polytype="ABABC")
+    elif name =="mg":
+        lattice = make_mg_hexagonal_lattice(symbol="Mg", a=3.183,h=2.06, polytype="ABAB")
+    elif name =="crnb":
+        lattice = make_crnb_lattice(symbols=("Cr","Nb"),a=6.5)
+    elif name =="nbo" :
+        lattice = make_nbo_lattice(symbols=("Nb","O"), a=3.32)
+    elif name =="tial": # TiAl (Li0)
+        lattice = make_tial_lattice(symbols=("Ti","Al"), a=4.0,b=4.0,c=4.0)
     elif name == "sic": # SiC (zinc blende structure, B3)
         # 4.3210368 A - value for Tersoff (1989) MD potential
         # 4.36 A - real value
@@ -265,7 +440,7 @@ def main():
     nx, ny, nz = float(args[2]), float(args[3]), float(args[4])
     config = mono(lattice, nx, ny, nz)
     if options.center_zero:
-        print "centering..."
+        print("centering...")
         m = config.atoms[0].pos.copy()
         M = config.atoms[0].pos.copy()
         for atom in config.atoms:
@@ -276,14 +451,10 @@ def main():
             atom.pos -= ctr
     if options.margin is not None:
         margin = options.margin * 10
-        print "adding margins %g A" % margin
+        print("adding margins {0} A".format(margin))
         for i in range(3):
             config.pbc[i][i] += margin
     config.export_atoms(args[5])
 
-
-
 if __name__ == '__main__':
     main()
-
-

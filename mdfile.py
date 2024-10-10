@@ -46,11 +46,11 @@ def export_for_dlpoly(atoms, f, title, sort=True):
     imcon = 1 #cubic periodic boundaries
     a = 200.
     with_shells = False
-    print >>f, title
-    print >>f, "%10i%10i" % (levcfg, imcon)
-    print >>f, "%20f%20f%20f" % (a, 0, 0)
-    print >>f, "%20f%20f%20f" % (0, a, 0)
-    print >>f, "%20f%20f%20f" % (0, 0, a)
+    print(title, file=f)
+    print("{0} {1}".format(levcfg, imcon), file=f)
+    print("{0} {1} {2}".format(a, 0, 0), file=f)
+    print("{0} {1} {2}".format(0, a, 0), file=f)
+    print("{0} {1} {2}".format(0, 0, a), file=f)
     ordered = atoms[:]
     if sort:
         # atoms are sorted in alphabetical order
@@ -60,12 +60,12 @@ def export_for_dlpoly(atoms, f, title, sort=True):
     counter = 0
     for atm in ordered:
         counter += 1
-        print >>f, "%-8s%20i" % (atm.name, counter)
-        print >>f, "%20f%20f%20f" % (atm.pos[0], atm.pos[1], atm.pos[2])
+        print("{0} {1}".format(atm.name, counter), file=f)
+        print("{0} {1} {2}".format(atm.pos[0], atm.pos[1], atm.pos[2]), file=f)
         if with_shells: #shell - hack
             counter += 1
-            print >>f, "%-8s%20i" % (atm.name + "-shl", counter)
-            print >>f, "%20f%20f%20f" % (atm.pos[0], atm.pos[1], atm.pos[2])
+            print("{0} {1}".format(atm.name + "-shl", counter), file=f)
+            print("{0} {1} {2}".format(atm.pos[0], atm.pos[1], atm.pos[2]), file=f)
 
     # gather data useful for FIELD file
     atom_counts = {}
@@ -78,16 +78,16 @@ def export_for_dlpoly(atoms, f, title, sort=True):
 
 
 def export_as_xmol(atoms, f, title):
-    print >>f, len(atoms)
-    print >>f, title
+    print(len(atoms), file=f)
+    print(title, file=f)
     for point in atoms:
-        print >>f, point.name, point.pos[0], point.pos[1], point.pos[2]
+        print("{} {} {} {}".format(point.name, point.pos[0], point.pos[1], point.pos[2]), file=f)
 
 
 def export_for_pielaszek(atoms, f):
     "the simplest format, used sometimes here in Unipress"
     for point in atoms:
-        print >>f, point.pos[0], point.pos[1], point.pos[2], point.name
+        print("{} {} {} {}".format(point.pos[0], point.pos[1], point.pos[2], point.name), file=f)
 
 
 def import_pielaszek(ifile):
@@ -171,20 +171,20 @@ def import_dlpoly_history(ifile):
 
 def dlpoly_history_info(ifile):
     title = ifile.readline().strip()
-    print "title:", title
+    print("title:", title)
     second_line = ifile.readline().split()
-    print "number of atoms in frame:", second_line[2]
-    print "has following frames:",
+    print("number of atoms in frame:", second_line[2])
+    print("has following frames:")
     frame_counter = 0
     while 1:
         line = ifile.readline()
         if not line:
             break
         if line.startswith("timestep"):
-            print line.split()[1],
+            print(line.split()[1])
             sys.stdout.flush()
             frame_counter += 1
-    print "finished.", frame_counter, "frames were found."
+    print("finished. {}".format(frame_counter)+" frames were found.")
 
 
 def get_stoichiometry_string(configuration):
@@ -221,29 +221,29 @@ def export_for_atomeye(configuration, f):
         raise ValueError("no PBC")
     if not isinstance(pbc, numpy.ndarray):
         pbc = numpy.array(pbc)
-    print >>f, "Number of particles = %i" % len(atoms)
+    print("Number of particles = {}".format(len(atoms)), file=f)
     for i in get_comment_list(configuration):
-        print >>f, "# " + i
-    print >>f, "A = 1.0 Angstrom (basic length-scale)"
+        print("# {}".format(i), file=f)
+    print("A = 1.0 Angstrom (basic length-scale)", file=f)
     for i in range(3):
         for j in range(3):
-            print >>f, "H0(%i,%i) = %f A" % (i+1, j+1, configuration.pbc[i][j])
-    print >>f, ".NO_VELOCITY."
-    print >>f, "entry_count = %i" % (3 + len(aux))
+            print("H0({0},{1}) = {2} A".format(i+1, j+1, configuration.pbc[i][j]), file=f)
+    print(".NO_VELOCITY.", file=f)
+    print("entry_count = {0}".format(3 + len(aux)), file=f)
     for n, a in enumerate(aux):
-        print >>f, "auxiliary[%i] = %s" % (n, a[0])
+        print("auxiliary[{0}] = {1}".format(n, a[0]), file=f)
     H_1 = linalg.inv(pbc)
     previous_name = None
     for i in atoms:
         if previous_name != i.name:
-            print >>f, pse.get_atom_mass(i.name)
-            print >>f, i.name
+            print(pse.get_atom_mass(i.name), file=f)
+            print(i.name, file=f)
             previous_name = i.name
         s = numpy.dot(i.pos, H_1) % 1.0
         entries = [s[0], s[1], s[2]]
         for aname, afunc in aux:
             entries.append(afunc(i))
-        print >>f, " ".join("%f" % i for i in entries)
+        print(" ".join(f"{i:.1f}" for i in entries), file=f)
 
 
 # This function returns reference 0 point for coloring based on
@@ -265,8 +265,7 @@ def _find_pos0(atoms):
 # returns function that returns value in the [0,1) range that corresponds to 
 # position of atom in unit cell
 def in_cell_pos_fun(dir, cell_size, pos0=0):
-    print "adding aux for %s position in cell size: %g" % (chr(ord('x')+dir),
-                                                           cell_size)
+    print("adding aux for {0} position in cell size: {1}".format(chr(ord('x')+dir), cell_size))
     return lambda a: ((a.pos[dir] - pos0) / cell_size) % 1.
 
 
@@ -384,11 +383,11 @@ def export_as_lammps(configuration, f):
     #configuration.orthogonalize_pbc()
     ort_pbc = get_orthorhombic_pbc(configuration.pbc)
     for i in get_comment_list(configuration):
-        print >>f, "# " + i
-    print >>f
+        print("# {}".format(i), file=f)
+    print("", file=f)
     counts = configuration.count_species()
     species = sorted(counts.keys())
-    print >>f, "\n%d\tatoms" % len(configuration.atoms)
+    print("\n{0}\tatoms".format(len(configuration.atoms)), file=f)
 
     ## temporary hack: for now i need 4 atom types for 2 species
     #species += ["B", "Ge"]
@@ -467,14 +466,14 @@ def import_poscar(ifile):
 
     # check if it's possible that the species above are set correctly
     if len(species) != len(atom_count):
-        print """\
+        print("""\
 Error: the first line should contain symbols of atoms.
 
 POSCAR/CONTCAR files have no atomic symbols.  We use convention that the first
 line (which is a comment line) contains atomic symbols in the order used in the
 6th line (the 6th line supplies the number of atoms per atomic species).
 The actual comment can be given after '#', e.g.
-C Si # cubic SiC"""
+C Si # cubic SiC""")
         sys.exit()
 
     H = numpy.array(pbc, float)
@@ -549,7 +548,7 @@ def get_type_from_filename(name):
     elif name.endswith(".gz"):
         return get_type_from_filename(name[:-3])
     else:
-        print "Can't deduce filetype from filename:", name
+        print("Can't deduce filetype from filename:", name)
         return None
 
 
@@ -640,7 +639,7 @@ def process_input(input_filename, options):
 
     if options.prefer_negative:
         if not cfg.pbc:
-            print "Error: Option --prefer-negative can be used only in PBC"
+            print("Error: Option --prefer-negative can be used only in PBC")
             sys.exit()
         put_pbc_image_between_halfs(cfg)
 
@@ -662,7 +661,7 @@ def process_input(input_filename, options):
 
     if options.center_zero:
         ctr = sum(atom.pos for atom in cfg.atoms) / len(cfg.atoms)
-        print "center: (%.3f, %.3f, %.3f)" % tuple(ctr)
+        print("center: ({} {} {})".format(*ctr))
         for atom in cfg.atoms:
             atom.pos -= ctr
 
@@ -672,7 +671,7 @@ def process_input(input_filename, options):
             x, y, z = atom.pos
             return eval(options.filter)
         cfg.atoms = [i for i in cfg.atoms if f(i)]
-        print len(cfg.atoms), "atoms left."
+        print("{0} atoms left".format(len(cfg.atoms)))
         if len(cfg.atoms) == 0:
             sys.exit()
 
@@ -736,12 +735,12 @@ def avg_plot(argv):
             xy.append((xfunc(i),) + tuple(yfunc(i) for yfunc in yfuncs))
     minx = min(i[0] for i in xy)
     maxx = max(i[0] for i in xy) + 1e-6
-    print "n=%d, x E <%g,%g)" % (len(xy), minx, maxx)
+    print("n={0}, x E <{1},{2}".format(len(xy), minx, maxx))
     for n, yf in enumerate(yfuncs):
         miny = min(i[n+1] for i in xy)
         maxy = max(i[n+1] for i in xy)
         avgy = sum(i[n+1] for i in xy) / len(xy)
-        print "%s E <%g, %g>, avg: %g" % (yf.__name__, miny, maxy, avgy)
+        print("{0} E <{1}, {2}>, avg: {3}".format(yf.__name__, miny, maxy, avgy))
 
     # make histogram
     nbins = (int(args[5]) if len(args) >= 6 else 128)
@@ -762,7 +761,7 @@ def avg_plot(argv):
     ofile = open_any(output_filename, 'w')
     for line in lines:
         if len(line) > 1:
-            print >>ofile, " ".join(str(i) for i in line)
+            print(" ".join(str(i) for i in line), file=ofile)
 
 
 if __name__ == '__main__':

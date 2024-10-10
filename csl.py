@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#coding:utf-8
 # this file is part of gosam (generator of simple atomistic models)
 # Licence: GNU General Public License version 2
 """\
@@ -17,21 +18,25 @@ usage_string = """\
  Examples:
   csl.py 100                            # generates a very long list of GBs
   csl.py 100 limit=50 max_angle=45      # generates a shorter list
+  csl.py 100 limit=50 max_angle=45 show_details=True # generates a shorter list with more details about CSL
   csl.py 111 31                         # show details of the specified GB
 """
 
 import sys
+import os
+import string
 import functools
 from math import degrees, atan, sqrt, pi, ceil
 import numpy
-from numpy import array, identity, dot, inner
+from numpy import array, identity, dot, inner, cross
 from numpy.linalg import inv, det, solve
 from rotmat import rodrigues, print_matrix
+import subprocess as sub
 
 def gcd(a, b):
     "Returns the Greatest Common Divisor"
-    assert isinstance(a, int)
-    assert isinstance(b, int)
+    assert isinstance(a, (int, numpy.int64))
+    assert isinstance(b, (int, numpy.int64))
     while a:
         a, b = b%a, a
     return b
@@ -53,6 +58,10 @@ def parse_miller(s):
         return array([int(s[i]) for i in range(3)])
     elif ',' in s:
         sp = s.split(",")
+        assert len(sp) == 3
+        return array([int(i) for i in sp])
+    elif ' ' in s:
+        sp = s.split(" ")
         assert len(sp) == 3
         return array([int(i) for i in sp])
     else:
@@ -97,7 +106,7 @@ def get_theta_m_n_list(hkl, sigma, verbose=False):
                 continue
             theta = get_cubic_theta(hkl, m, n)
             if verbose:
-                print "m=%i n=%i" % (m, n), "%.3f" % degrees(theta)
+                print("m={0} n={1} {2}".format(m, n, degrees(theta)))
             thetas.append((theta, m, n))
     return thetas
 
@@ -215,7 +224,7 @@ def make_parallel_to_axis(T, col, axis):
     #print "c", c
     sel_val = min([i for i in c if i != 0], key=abs)
     if abs(sel_val) != 1: # det must be changed
-        print "\n\tWARNING: Volume increased by %i" % abs(sel_val)
+        print("\n\tWARNING: Volume increased by {}".format(abs(sel_val)))
     idx = c.tolist().index(sel_val)
     #print idx, sel_val
     if idx != col:
@@ -234,11 +243,11 @@ def make_parallel_to_axis(T, col, axis):
     return T
 
 
-def is_integer(a, epsilon=1e-7):
+def is_integer(a, epsilon=1e-4):
     "return true if numpy Float array consists off all integers"
     return (numpy.abs(a - numpy.round(a)) < epsilon).all()
 
-def find_smallest_multiplier(a, max_n=1000):
+def find_smallest_multiplier(a, max_n=4000):
     """return the smallest positive integer n such that matrix a multiplied
        by n is an integer matrix
     """
@@ -247,15 +256,17 @@ def find_smallest_multiplier(a, max_n=1000):
             return i
     raise ValueError("Sorry, we can't make this matrix integer:\n%s" % a)
 
-def find_smallest_real_multiplier(a, max_n=1000):
+def find_smallest_real_multiplier(a, max_n=10000):
     """return the smallest positive real f such that matrix `a' multiplied
        by f is an integer matrix
     """
     # |the smallest non-zero element|
+    print("the smallest non-zero element: {}".format(a))
     m = min(abs(i) for i in a if abs(i) > 1e-9)
     for i in range(1, max_n):
         t = i / float(m)
         if is_integer(t * a):
+            print("find smallest real multipliers".format(t))
             return t
     raise ValueError("Sorry, we can't make this matrix integer:\n%s" % a)
 
@@ -309,6 +320,11 @@ def find_csl_matrix(sigma, R):
     Return value:
         matrix, which column vectors are the unit vectors of the CSL.
     Based on H. Grimmer et al., Acta Cryst. (1974) A30, 197
+
+    (I-A^{'-1}): = Tp = (I- U * inv(S) * inv(R) * S)
+
+    det(Tp) = n / sigma
+    Xp = inv(Tp)
     """
 
     S = _get_S()
@@ -323,17 +339,17 @@ def find_csl_matrix(sigma, R):
         Tp = identity(3) - dot(U, Rs)
         if abs(det(Tp)) > 1e-6:
             found = True
-            print "Unimodular transformation used:\n%s" % U
+            print("Unimodular transformation used:\n{}".format(U))
             break
     if not found:
-        print "Error. Try another unimodular transformation U to calculate T'"
+        print("Error. Try another unimodular transformation U to calculate T'")
         sys.exit(1)
 
     Xp = numpy.round(inv(Tp), 12)
-    print "0-lattice:\n%s" % Xp
+    print("0-lattice:\n{0}".format(Xp))
     n = round(sigma / det(Xp), 7)
     # n is an integral number of 0-lattice units per CSL unit
-    print "det(X')=",det(Xp), "  n=", n
+    print("det(X')={} n= {}".format(det(Xp),n))
     csl = make_csl_from_0_lattice(Xp, n)
     assert is_integer(csl)
     csl = csl.round().astype(int)
@@ -341,7 +357,7 @@ def find_csl_matrix(sigma, R):
 
 
 def plus_minus_gen(n):
-    for i in xrange(1, n):
+    for i in range(1, n):
         yield i
         yield -i
 
@@ -353,7 +369,7 @@ def zero_plus_minus_gen(n):
 
 @transpose_3x3
 def find_orthorhombic_pbc(M):
-    """\
+    """
      We don't change the last axis,
      because it was set properly in make_parallel_to_axis().
 
@@ -366,10 +382,10 @@ def find_orthorhombic_pbc(M):
      z2 = z/GCD(z), b != 0, c != 0,
      and max(|x2|, |y2|, |z2|) has the smallest value possible.
      (This description is a bit simplified, for details see the code)
-     
+
      In matrix notation:       [b f 0]
-                           M x [d c 0] = pbc  
-                               [e g 1]        
+                           M x [d c 0] = pbc
+                               [e g 1]
     """
     # M is "half-integer" when using pc2fcc().
     # BTW I'm not sure if pc2fcc() is working properly.
@@ -383,7 +399,7 @@ def find_orthorhombic_pbc(M):
     # We are searching for solution by iteration over possible b,d,c values,
     # -max_multiplier < b,d,c < max_multiplier.
     # Increasing max_multiplier obviously slows down the program.
-    max_multiplier = 27
+    max_multiplier = 37
 
     pbc = None
     max_sq = 0
@@ -414,8 +430,8 @@ def find_orthorhombic_pbc(M):
                 aa_invertible = (abs(det(aa)) > 1e-7)
                 for c in plus_minus_gen(max_multiplier):
                     #  z2 . y2 == 0 and x2 . y2 == 0 =>
-                    #       f * mxy[0] + g * mxy[2] == -c * mxy[1] 
-                    #       f * myz[0] + g * myz[2] == -c * myz[1] 
+                    #       f * mxy[0] + g * mxy[2] == -c * mxy[1]
+                    #       f * myz[0] + g * myz[2] == -c * myz[1]
                     if aa_invertible:
                         fg = solve(aa, c * bb)
                     else: # special case, i'm not sure if handled properly
@@ -439,7 +455,7 @@ def find_orthorhombic_pbc(M):
                             pbc = array([x2, y2, z2])
                             max_sq = max_sq_
     if pbc is None:
-        print "No orthorhombic PBC found. (you may increase max_multiplier)"
+        print("No orthorhombic PBC found. (you may increase max_multiplier)")
         sys.exit()
 
     if doubleM:
@@ -488,7 +504,7 @@ def pc2fcc(Cp):
     return dot(Z, Cp)
 
 def print_list(hkl, max_angle, limit):
-    print "[max. sigma: %s, max angle: %s deg.]" % (limit, max_angle)
+    print("[max. sigma: {0}, max angle: {1} deg.]".format(limit, max_angle))
     data = []
     for i in range(limit):
         tt = get_theta_m_n_list(hkl, i, verbose=False)
@@ -497,24 +513,24 @@ def print_list(hkl, max_angle, limit):
             if degrees(theta) <= max_angle:
                 tup = (i, degrees(theta), m, n)
                 data.append(tup)
-                print "sigma=%3i    theta=%5.2f     m=%3i    n=%3i" % tup
+                print("sigma={}    theta={}     m={}    n={}".format(*tup))
 
     data.sort(key= lambda x: x[1])
-    print " ============= Sorted by theta ================ "
+    print(" ============= Sorted by theta ================ ")
     for i in data:
-        print "sigma=%3i    theta=%5.2f     m=%3i    n=%3i" % i
+        print("sigma={}    theta={}     m={}    n={}".format(*i))
 
 
 def print_details(hkl, m, n):
     sigma = get_cubic_sigma(hkl, m, n)
     theta = get_cubic_theta(hkl, m, n)
-    print "sigma=%d, theta=%.3f, m=%d, n=%d, axis=[%d,%d,%d]" % (
-            sigma, degrees(theta), m, n, hkl[0], hkl[1], hkl[2])
+    print("sigma={}, theta={}, m={}, n={}, axis=[{},{},{}]".format(
+            sigma, degrees(theta), m, n, hkl[0], hkl[1], hkl[2]))
     R = rodrigues(hkl, theta)
-    print
-    print "R * sigma =\n%s" % (R * sigma)
+    print("")
+    print("R * sigma =\n{}".format(R * sigma))
     C = find_csl_matrix(sigma, R)
-    print "CSL primitive cell (det=%s):\n%s" % (det(C), C)
+    print("CSL primitive cell (det={}):\n{}".format(det(C), C))
     ## optional, for FCC
     #C = pc2fcc(C)
     #C = beautify_matrix(C)
@@ -522,15 +538,52 @@ def print_details(hkl, m, n):
 
     Cp = make_parallel_to_axis(C, col=2, axis=hkl)
     if (Cp != C).any():
-        print "after making z || %s:\n%s" % (hkl, Cp)
+        print("after making z || {}:\n{}".format(hkl, Cp))
     pbc = find_orthorhombic_pbc(Cp)
     print_matrix("Minimal(?) orthorhombic PBC", pbc)
 
 
+def print_list_details(hkl, max_angle, limit):
+    print("More details about CSL within [max. sigma: {0}, max angle: {1} deg.]".format(limit, max_angle))
+    data = []
+    for i in range(limit):
+        tt = get_theta_m_n_list(hkl, i, verbose=False)
+        for t in tt:
+            theta, m, n = t
+            if degrees(theta) <= max_angle:
+                R = rodrigues(hkl, theta)
+                C = find_csl_matrix(i, R)
+                Cp = make_parallel_to_axis(C, col=2, axis=hkl)
+                if (Cp != C).any():
+                    print("after making z || {}:\n{}".format(hkl, Cp))
+                pbc = find_orthorhombic_pbc(Cp)
+                print_matrix("Minimal(?) orthorhombic PBC", pbc)
+                # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Notice just for Nb when a=3.308!!!!!!!!!!!!!!!!!!!!!!
+                unitlength = sqrt(pbc[0][0]**2 + pbc[1][0]**2 +pbc[2][0]**2)*3.308
+                mult = ceil(float(100)/unitlength) or 1
+                Lz = unitlength * mult
+                Lz_2 = Lz/2.
+                Lz_3 = Lz - 14.4   #   just for my model
+                tup = (i, degrees(theta), m, n, Lz, Lz_2, Lz_3, pbc[0][2], pbc[1][2], pbc[2][2], pbc[0][1], pbc[1][1], pbc[2][1], pbc[0][0], pbc[1][0], pbc[2][0],)
+                data.append(tup)
+                print("sigma={}    theta={}     m={} n={} Lz={} Lz/2={} Lz-14.4={}  {}{}{}|{}{}{}|{}{}{}".format(*tup))
+
+    data.sort(key= lambda x: x[1])
+    print(" ============= Sorted by theta ================ ")
+    for i in data:
+        print("sigma={} theta={} m={} n={} Lz={} Lz/2={} (Lz-14.4)={} min(GBE)=	({},{},{})|({},{},{})|({},{},{})".format(*i))
+    for i in data:
+                #  call the bicrystal.py
+        COMMAND="python /home/akakcolin/bin/bicrystal.py 1,1,1  {},{},{} {},{} 5 10 15 {}_{}_{}_111.cfg".format( i[13], i[14], i[15], int(i[2]),int(i[3]),i[0],i[2],i[3])
+        sub.call(COMMAND, shell=True)
+
+
+
 def main():
     # parse keyword options
-    limit=1000
+    limit=1500
     max_angle=90
+    show_details=False
     for a in sys.argv[1:]:
         if '=' in a:
             key, value = a.split("=", 1)
@@ -538,37 +591,37 @@ def main():
                 limit = int(value)
             elif key == "max_angle":
                 max_angle = float(value)
+            elif key == "show_details":
+                show_details = value
             else:
                 raise KeyError("Unknown option: " + key)
 
     args = [a for a in sys.argv[1:] if '=' not in a]
     if len(args) < 1 or len(args) > 3:
-        print usage_string
+        print(usage_string)
         return
 
     hkl = parse_miller(args[0])
 
     if len(args) == 1:
-        print_list(hkl, max_angle=max_angle, limit=limit)
+        if show_details:
+            print_list_details(hkl, max_angle=max_angle, limit=limit)
+        else:
+            print_list(hkl, max_angle=max_angle, limit=limit)
     elif len(args) == 2:
         sigma = int(args[1])
         thetas = get_theta_m_n_list(hkl, sigma, verbose=False)
         thetas.sort(key = lambda x: x[0])
         for theta, m, n in thetas:
-            print "m=%2d  n=%2d %7.3f" % (m, n, degrees(theta))
+            print("m={}  n={} {}".format(m, n, degrees(theta)))
         if not thetas:
-            print "Not found."
+            print("Not found.")
     elif len(args) == 3:
         m = int(sys.argv[2])
         n = int(sys.argv[3])
-        try:
-            print_details(hkl, m, n)
-        except KeyboardInterrupt:
-            print " Interrupted. Exiting."
+        print_details(hkl, m, n)
 
 
 
 if __name__ == '__main__':
     main()
-
-

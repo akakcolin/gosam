@@ -92,8 +92,7 @@ class Model:
         self.atoms = [a for a in self.atoms if not func(a)]
         len_after = len(self.atoms)
         n_vacancies = len_before-len_after
-        print "Vacancies: %i atoms were deleted. %i atoms left." % (
-                                                        n_vacancies, len_after)
+        print("Vacancies: {0} atoms were deleted. {1} atoms left.".format(n_vacancies, len_after))
         self.log("vacancies where generated (%i of %i) using probabilities: %s"
                    % (n_vacancies, len_before, vacancy_probability))
 
@@ -143,7 +142,7 @@ class Model:
         # check each atom
         for atom in self.atoms:
             if verbose:
-                print "Atom " + str(atom.name) + "...",
+                print("Atom {} ...".format(str(atom.name)))
             shell = 0
             # si, scaled position of initial point in final pbc
             # sf, scaled position of final point in final pbc
@@ -156,7 +155,7 @@ class Model:
                 # check the next shell
                 shell += 1
                 if verbose:
-                    print "shell " + str(shell) + "...",
+                    print("shell {0} ...".format(str(shell)))
                 # make a list of all the boxes
                 scaled_pos = sum(sum(
                     [[[[i,j,k]
@@ -173,14 +172,14 @@ class Model:
                         break
             atom.pos += dot(sx, pvi)
             if verbose:
-                print "done"
+                print("done")
         # set the pbc to the final pbc
         self.pbc = pvf
 
 
     def count_neighbours(self, atom, max_bondlength):
         "O(N^2); use mdprim.CellMethod instead"
-        print "WARNING: ineffective neighbour counting in use"
+        print("WARNING: ineffective neighbour counting in use")
         neighbors = 0
         for j in self.atoms:
             #optimization
@@ -192,7 +191,7 @@ class Model:
 
 
     def print_coordination_statistics(self, max_bondlength):
-        print "Coordination statistics: ",
+        print("Coordination statistics: ")
         sys.stdout.flush()
         stat = {}
         #for i in self.atoms:
@@ -204,11 +203,11 @@ class Model:
             stat[n] = stat.get(n, 0) + 1
         s = stat.items()
         s.sort(lambda x,y: -cmp(x[1], y[1]))
-        print ", ".join("%i: %i" % i for i in s)
+        print(", ".join("{0}: {0}".format(i) for i in s))
 
 
     def print_stochiometry(self):
-        print "Stochiometry: ",
+        print("Stochiometry: ")
         stat = {}
         for i in self.atoms:
             if i.name in stat:
@@ -217,7 +216,7 @@ class Model:
                 stat[i.name] = 1
         s = stat.items()
         s.sort(lambda x,y: -cmp(x[1], y[1]))
-        print ", ".join("%s: %i" % i for i in s)
+        print(", ".join("{0}: {0}".format(i) for i in s))
 
 
     def remove_undercoordinated_atoms(self, max_bondlength):
@@ -225,7 +224,7 @@ class Model:
         and some with 2 nearest neighbors (stoichiometry is conserved).
         For use in tetrahedrally coordinated lattices.
         """
-        print "Removing under-coordinated atoms..."
+        print("Removing under-coordinated atoms...")
         before = len(self.atoms)
         for iter in range(2):
             cm = mdprim.CellMethod(self.atoms, max_bondlength)
@@ -239,7 +238,7 @@ class Model:
             for i in to_be_deleted:
                 del self.atoms[i]
         rem = before - len(self.atoms)
-        print "... %i atoms removed." % rem
+        print("... {0} atoms removed.".format(rem))
         self.print_coordination_statistics(max_bondlength)
         self.print_stochiometry()
         self.log("removed %i under-coordinated atoms" % rem)
@@ -253,9 +252,9 @@ class Model:
                 dist = atoms[k].get_dist(atoms[j], pbc_half=pbc_half)
                 dd.append(dist)
         if not dd:
-            print "no atoms were too close"
+            print("no atoms were too close")
             return
-        print "   deleted atoms distances: from %s to %s" % (min(dd), max(dd))
+        print("   deleted atoms distances: from {0} to {1}".format(min(dd), max(dd)))
 
 
     def _shift_before_removing(self, to_be_deleted):
@@ -295,7 +294,7 @@ class Model:
         for i in tbd_idx:
             del atoms[i]
         rem = before - len(atoms)
-        print "... %i atoms removed." % rem
+        print("... {0} atoms removed.".format(rem))
         if atoms is self.atoms: # otherwise self.atoms stats are useless
             self.print_stochiometry()
         self.log("removed %i too-close atoms" % rem)
@@ -349,10 +348,10 @@ class Model:
 
         _sort_and_uniq(distances1)
         _sort_and_uniq(distances2)
-        print "inter-atomic distances:", distances1
-        print "same species distances:", distances2
-        print "atoms count:", len(self.atoms)
-        print
+        print("inter-atomic distances:", distances1)
+        print("same species distances:", distances2)
+        print("atoms count:", len(self.atoms))
+        print("")
 
         counter = 1
         orig_atoms = self.atoms
@@ -364,12 +363,11 @@ class Model:
                 rm = [a.nr for a in orig_atoms if (a.r1 and a.r1 < i)
                                                    or (a.r2 and a.r2 < j)]
                 if rm in all_rm:
-                    print "ignore cutoffs: %g, %g (%d atoms)" % (i, j, len(rm))
+                    print("ignore cutoffs: {0}, {1} ({2} atoms)".format(i, j, len(rm)))
                     continue
                 all_rm.append(rm)
-                self.title = "del %d atoms with cutoffs: %g, %g" % (
-                                                                len(rm), i, j)
-                print self.title
+                self.title = "del {0} atoms with cutoffs: {1}, {2}".format(len(rm), i, j)
+                print(self.title)
                 self.atoms = [a for a in orig_atoms if a.nr not in rm]
                 fn = filename.replace('%', str(counter))
                 self.export_atoms(fn)
@@ -383,8 +381,8 @@ class Model:
             if 1e-7 < d < 3.0:
                 distances.append(d + 1e-6)
         _sort_and_uniq(distances)
-        print "same species distances:", distances
-        print "atoms count:", len(self.atoms)
+        print("same species distances:", distances)
+        print("atoms count:", len(self.atoms))
         return distances
 
     # this function is not used, it will be deleted in future
@@ -402,8 +400,8 @@ class Model:
             #              if not 1e-7 < a.pos[2] < j / 2.]
                           if not 1e-7 < (upper(a)*a.pos[2]) < j / 2.]
             ndel = len(orig_atoms) - len(self.atoms)
-            self.title = "del %d atoms with cutoff: %g" % (ndel, j)
-            print self.title
+            self.title = "del {0} atoms with cutoff: {1}".format(ndel, j)
+            print(self.title)
             fn = filename.replace('%', str(n))
             self.export_atoms(fn)
 
@@ -424,8 +422,8 @@ class Model:
                               if not 1e-7 < a.pos[2] < j / 2.]
                 #              if not 1e-7 < (upper(a)*a.pos[2]) < j / 2.]
                 ndel = len(orig_atoms) - len(self.atoms)
-                self.title = "del %d atoms with cutoff: %g" % (ndel, j)
-                print self.title
+                self.title = "del {0} atoms with cutoff: {1}".format(ndel, j)
+                print(self.title)
                 fn = filename.replace('%', str(n))
                 self.export_atoms(fn)
         else:
@@ -438,9 +436,8 @@ class Model:
                     self.atoms = [a for a in orig_atoms
                                 if not 1e-7 < upper(a)*a.pos[2] < zmax[a.name]]
                     ndel = len(orig_atoms) - len(self.atoms)
-                    self.title = "del %d atoms with cutoffs: %g, %g" % (
-                                                                  ndel, j1, j2)
-                    print self.title
+                    self.title = "del {0} atoms with cutoffs: {1}, {2}".format(ndel, j1, j2)
+                    print(self.title)
                     fn = filename.replace('%', "%d-%d" % (n1, n2))
                     self.export_atoms(fn)
 
@@ -456,27 +453,27 @@ class Model:
             if format is None:
                 return
         format = format.lower()
-        print "Saving atoms to file '%s' in format '%s'" % (f.name, format)
+        print("Saving atoms to file '{0}' in format '{1}'".format(f.name, format))
         self._do_export_atoms(f, format)
         self.log("atoms saved to file '%s' in format '%s'" % (f.name, format))
 
-    def _do_export_atoms(self, f, format):
-        if format == "xmol":
+    def _do_export_atoms(self, f, formatf):
+        if formatf == "xmol":
             mdfile.export_as_xmol(self.atoms, f, self.title)
-        elif format == "pielaszek":
+        elif formatf == "pielaszek":
             mdfile.export_for_pielaszek(self.atoms, f)
-        elif format == "dlpoly":
+        elif formatf == "dlpoly":
             mdfile.export_for_dlpoly(self.atoms, f, self.title)
-        elif format == "atomeye":
+        elif formatf == "atomeye":
             mdfile.export_for_atomeye(self, f)
-        elif format == "poscar":
+        elif formatf == "poscar":
             mdfile.export_as_poscar(self, f)
-        elif format == "gulp":
+        elif formatf == "gulp":
             mdfile.export_as_gulp(self, f)
-        elif format == "lammps":
+        elif formatf == "lammps":
             mdfile.export_as_lammps(self, f)
         else:
-            print >>f, "Unknown format requested: %s" % format
+            print("Unknown format requested: {0}".format(formatf), file=f)
 
 
     def get_center(self, onAtom=False):
@@ -493,8 +490,8 @@ class Model:
     def get_T_vs_centerdist(self, n=100):
         ctr = self.get_center()
         t = [(ctr.get_dist(i), i.get_temperature()) for i in self.atoms]
-        print "Average temperature:", sum(i[1] for i in t) / len(t),
-        print "max.", max(i[1] for i in t)
+        print("Average temperature:", sum(i[1] for i in t) / len(t))
+        print("max.", max(i[1] for i in t))
         t.sort(lambda x,y: cmp(x[0], y[0]))
         xy = []
         for i in range(len(t)//n):
@@ -506,11 +503,11 @@ class Model:
 
 
     def write_T_vs_centerdist(self, filename, n_group=100):
-        print "Writing radial distribution of temperature " \
-                "(atoms grouped %s) to file %s" % (n_group, filename)
+        print("Writing radial distribution of temperature " \
+                "(atoms grouped {0}) to file {1}".format(n_group, filename))
         ofile = file(filename, 'w')
         for i in self.get_T_vs_centerdist(n_group):
-            print >>ofile, i[0], i[1]
+            print("{0} {1}".format(i[0], i[1]), file=ofile)
 
     def set_pbc_with_vacuum(self, width):
         pbc = numpy.zeros((3,3))

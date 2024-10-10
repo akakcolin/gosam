@@ -133,7 +133,7 @@ class CellMethod:
             nx, ny, nz = self._get_cell_coord(a)
             cell_idx = (nx * self.nc[1] + ny) * self.nc[2] + nz
             self.cells[cell_idx].append(a_idx)
-        print "... system divided into %d x %d x %d cells ..." % tuple(self.nc)
+        print("... system divided into {} x {} x {} cells ...".format(*(self.nc)))
 
 
     def _get_neigh_cells_in_dim(self, n, c):

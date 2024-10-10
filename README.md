@@ -1,3 +1,5 @@
+modify code to support python3 env and tiny change
+
 gosam is a bunch of Python scripts:
   * `bicryst.py` -- to generate atomistic model of grain boundary (bicrystal)
     with a coincidence site lattice (CSL) boundary in the PBC box,

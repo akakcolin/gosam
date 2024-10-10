@@ -161,7 +161,7 @@ class AtomInNode:
         self.non_zero = (xa != 0 or yb != 0 or zc != 0)
 
     def __str__(self):
-        return "%s at %s in node"% (self.name, tuple(self.pos))
+        return("{} at {} in node".format(self.name, tuple(self.pos)))
 
 
 class Node:
@@ -196,7 +196,7 @@ class CrystalLattice:
     def __init__(self, unit_cell, nodes, name="Mol"):
         self.unit_cell = unit_cell
         self.nodes = nodes
-        assert isinstance(name, basestring)
+        assert isinstance(name, str)
         self.name = name
 
     def __str__(self):
@@ -223,16 +223,16 @@ class CrystalLattice:
 
     def export_powdercell(self, f):
         cell = self.unit_cell
-        print >>f, "CELL %f %f %f %f %f %f" % (cell.a, cell.b, cell.c,
-                                             cell.alpha, cell.beta, cell.gamma)
+        print("CELL {} {} {} {} {} {}".format(cell.a, cell.b, cell.c,
+                                             cell.alpha, cell.beta, cell.gamma), file=f)
         names = []
         for node in self.nodes:
             for atom in node.atoms_in_node:
                 pos = node.pos_in_cell + atom.pos
                 names.append(atom.name)
                 xname = "%s%i" % (atom.name, names.count(atom.name))
-                print >>f, "%-4s %-4s %-8s %-8s %-8s" % (atom.name, atom.name,
-                                                        pos[0], pos[1], pos[2])
+                print("{}-4s {}-4s {}-8s {}-8s {}-8s".format(atom.name, atom.name,
+                                                        pos[0], pos[1], pos[2]), file=f)
 
 
 def generate_polytype(a, h, polytype):

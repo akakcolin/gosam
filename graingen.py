@@ -42,7 +42,7 @@ One of possible uses is as follows:
 from math import cos, sin, acos, asin, sqrt, pi, floor, ceil, radians, degrees
 from subprocess import Popen, PIPE
 from tempfile import NamedTemporaryFile
-import commands
+import subprocess
 import sys
 import os.path
 from numpy import array, zeros, dot, sometrue, inner, cross
@@ -60,12 +60,28 @@ fcc_nodes = [
     (0.0, 0.5, 0.5),
     (0.5, 0.0, 0.5),
 ]
-
+fcc_caix_nodes = [
+        ]
 bcc_nodes = [
     (0.0, 0.0, 0.0),
     (0.5, 0.5, 0.5)
 ]
+simple_nodes = [
+    (0.0, 0.0, 0.0)
+    ]
 
+hcp_nodes = [
+    (0.5, -0.866, 0,),
+    (0.5, 0.866, 0.),
+    (0.0, 0.0, 1.0),
+    ]
+
+tial_nodes = [
+    (0.0, 0.0, 0.0),
+    (0.5, 0.5, 0.0),
+    (0.5, 0.0, 0.5),
+    (0, 0.5, 0.5)
+    ]
 
 class UnexpectedArgsError(Exception):
     def __init__(self, value):
@@ -331,9 +347,9 @@ class FreshModel(Model):
         ncl = lar*lbr*lcr
         nnd = len(self.lattice.nodes)
         nat = sum([len(i.atoms_in_node) for i in self.lattice.nodes])
-        t = "Considering %ix%ix%i=%i cells, " % (lar, lbr, lcr, ncl)
-        t += "%i nodes/cell, %i atoms/cell, " % (nnd, nat)
-        t += "%i nodes, %i atoms." % (ncl*nnd, nat*ncl)
+        t = "Considering {}{}{}={} cells, ".format(lar, lbr, lcr, ncl)
+        t += "{} nodes/cell, {} atoms/cell,".format(nnd, nat)
+        t += "{} nodes, {} atoms.".format(ncl*nnd, nat*ncl)
         return t
 
 
@@ -408,7 +424,7 @@ class CuttedGrain(FreshModel):
         f.flush()
         f.seek(0)
         try:
-            commands.getoutput("geomview -nopanels %s" % f.name)
+            subprocess.check_output("geomview -nopanels {0}".format(f.name), stderr=subprocess.STDOUT, shell=True)
         except KeyboardInterrupt:
             pass
 
@@ -425,12 +441,12 @@ class CuttedGrain(FreshModel):
 
 
     def generate_atoms(self):
-        print "generating atoms (atom positions) ..."
+        print("generating atoms (atom positions) ...")
         self.atoms = []
         not_included_counter = 0
         shifted_counter = 0
         self.compute_scope()
-        print self.get_scope_info()
+        print(self.get_scope_info())
 
         #almost inner loop - over all nodes
         for node, abs_pos in self.get_all_nodes():
@@ -487,9 +503,8 @@ class CuttedGrain(FreshModel):
                 if shifts > 0:
                     shifted_counter += 1
 
-        print "%i nodes outside of grain." % not_included_counter
-        print "Number of atoms in grain: %i (shifted: %i)" % (len(self.atoms),
-                                                              shifted_counter)
+        print("{} nodes outside of grain.".format(not_included_counter))
+        print("Number of atoms in grain: {0} (shifted: {1})".format(len(self.atoms), shifted_counter))
         self.log("atom positions generated")
 
 
@@ -510,7 +525,7 @@ def generate_grain(d):
     elif "atoms" in d:
         nodes = [Node(i[1:], [AtomInNode(i[0])]) for i in d["atoms"]]
     else:
-        print 'Either "nodes" and "node_atoms" or "atoms" should be defined.'
+        print('Either "nodes" and "node_atoms" or "atoms" should be defined.')
         return
     lattice = CrystalLattice(d["cell"], nodes)
     g = CuttedGrain(lattice, surfaces=d["surfaces"])
@@ -542,7 +557,7 @@ def generate_grain(d):
         else:
             msg = "WARNING: unknown file format in 'output_formats': " + name
             logfile.write(msg + "\n")
-            print msg
+            print(msg)
 
     if "output_formats" in d:
         formats = [format_name(i) for i in d["output_formats"]]
@@ -569,5 +584,5 @@ def generate_grain(d):
 
 
 if __name__ == '__main__':
-    print "Use it as module"
+    print("Use it as module")
 

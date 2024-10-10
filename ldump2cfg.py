@@ -163,14 +163,13 @@ def _print_gb_energy(energies, dr, verbose=False):
     energy = sum(energies)
     excess = energy - count * e0
     if verbose:
-        print "PBC: %g x %g x %g" % tuple(dr.pbc)
-        print "total energy of %d atoms: %g eV (%g/at.), excess: %g" % (
-                count, energy, energy/count, excess)
+        print("PBC: {} x {} x {}".format(*dr.pbc))
+        print("total energy of {0} atoms: {1} eV ({2}/at.), excess: {3}".format(count, energy, energy/count, excess))
     area = dr.pbc[0] * dr.pbc[1]
     gb_energy = excess / area * conversion_eV_A2_to_J_m2
     if verbose:
-        print "GB energy:", gb_energy
-        print "n*Edisl:", excess * conversion_eV_A2_to_J_m2 * 1e-10 / dr.pbc[0]
+        print("GB energy: {}".format(gb_energy))
+        print("n*Edisl: {}".format(excess * conversion_eV_A2_to_J_m2 * 1e-10 / dr.pbc[0])
     return gb_energy
 
 def calculate_dislocation_energy(dump_filename, y0, z0, r):
@@ -192,8 +191,9 @@ def calculate_dislocation_energy(dump_filename, y0, z0, r):
     disl_length = dr.pbc[0]
     eV_A_to_J_m = conversion_eV_A2_to_J_m2 * 1e-10
     e_disl = excess / disl_length * eV_A_to_J_m
-    print "%d atoms in cyllinder (y-%g)^2 + (z-%g)^2 < %g^2" % (count,y0,z0,r)
-    print "Edisl [J/m]: %g" % (e_disl)
+    print("{0} atoms in cyllinder (y-{1})^2 + (z-{2})^2 < {3}^2".format(count,y0,z0,r))
+
+    print("Edisl [J/m]: {0}".format(e_disl))
     return e_disl
 
 def calculate_gbe_of_types12(dump_filename):
@@ -299,11 +299,11 @@ def calc_gbe_vs_y(dump_filename):
         assert bin < nbins
         delta = float(tokens[val_pos]) - e0
         hist[bin] += delta
-    print "GBE:", sum(hist) / area * conversion_eV_A2_to_J_m2
+    print("GBE: {}".format(sum(hist) / area * conversion_eV_A2_to_J_m2))
 
     hist_file = open_any("gbe_vs_y.hist", "w")
     for n, d in enumerate(hist):
-        print >>hist_file, (n+0.5) / nbins, d / area * conversion_eV_A2_to_J_m2
+        print("{0} {1}".format((n+0.5) / nbins, d / area * conversion_eV_A2_to_J_m2), file=hist_file)
 
 
 if __name__ == "__main__":
@@ -313,11 +313,11 @@ if __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "total":
         for f in sys.argv[2:]:
             if len(sys.argv) > 3:
-                print f
+                print(f)
             calculate_total_energy(f)
     elif len(sys.argv) == 4 and sys.argv[1] == "hist":
         gbe = calculate_gb_energy(sys.argv[2], sys.argv[3])
-        print "GB energy: ", round(gbe, 4)
+        print("GB energy: {0}".format(round(gbe, 4)))
     elif len(sys.argv) == 3 and ".cfg" in sys.argv[2]:
         convert(sys.argv[1], sys.argv[2])
     elif len(sys.argv) == 6 and sys.argv[1] == "disl":
@@ -327,11 +327,11 @@ if __name__ == "__main__":
                                      r=float(sys.argv[5]))
     else:
         if gb_relative_width:
-            print "GB energy [J/m2]"
-            print "GB width assumed as %g%% of slab" % (gb_relative_width * 100)
+            print("GB energy [J/m2]")
+            print("GB width assumed as {0}%% of slab".format(gb_relative_width * 100))
         for i in sys.argv[1:]:
             gbe = calculate_gb_energy(i)
             name = (i[:-8] if i.endswith(".dump.gz") else i)
-            print "%s\t%f" % (name, gbe)
+            print("{0}\t{1}".format(name, gbe))
 
 
