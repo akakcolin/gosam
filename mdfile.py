@@ -12,7 +12,7 @@ Supported file types (some of them are supported partially):
  POSCAR - VASP input file with atom positions - POSCAR (direct format)
  GULP - a part of GULP input file with cell vectors and atom coordinates
 """
-
+import os
 import sys
 import operator
 from optparse import OptionParser
@@ -189,7 +189,7 @@ def dlpoly_history_info(ifile):
 
 def get_stoichiometry_string(configuration):
     counts = configuration.count_species()
-    return "Stoichiometry: " + " ".join("%s:%d" % i for i in counts.iteritems())
+    return "Stoichiometry: " + " ".join("{0}:{0}".format(i) for i in counts.items())
 
 
 def export_for_atomeye(configuration, f):
@@ -563,7 +563,7 @@ def open_any(name, mode='r'):
         else:
             return sys.stdin
     else:
-        return file(name, mode)
+        return open(name, mode)
 
 
 def import_autodetected(filename):

@@ -446,8 +446,7 @@ class Model:
         """
         save atoms to file f in one of possible formats
         """
-        if type(f) in (str, unicode):
-            f = mdfile.open_any(f, 'w')
+        f = mdfile.open_any(f, 'w')
         if format is None:
             format = mdfile.get_type_from_filename(f.name);
             if format is None:

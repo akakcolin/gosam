@@ -359,9 +359,10 @@ def main():
                            title=title)
     config.generate_atoms(z_margin=opts.vacuum)
 
-    if not opts.mono1 and not opts.mono2 and opts.remove_dist > 0:
-        print("Removing atoms in distance < {} ...".format(opts.remove_dist))
-        config.remove_close_neighbours(opts.remove_dist)
+    if (opts.remove_dist):
+        if not opts.mono1 and not opts.mono2:
+            print("Removing atoms in distance < {} ...".format(opts.remove_dist))
+            config.remove_close_neighbours(opts.remove_dist)
 
     if opts.remove_dist2:
         a_atoms = []
