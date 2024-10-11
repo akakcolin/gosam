@@ -347,7 +347,7 @@ class FreshModel(Model):
         ncl = lar*lbr*lcr
         nnd = len(self.lattice.nodes)
         nat = sum([len(i.atoms_in_node) for i in self.lattice.nodes])
-        t = "Considering {}{}{}={} cells, ".format(lar, lbr, lcr, ncl)
+        t = "Considering {}x{}x{}={} cells, ".format(lar, lbr, lcr, ncl)
         t += "{} nodes/cell, {} atoms/cell,".format(nnd, nat)
         t += "{} nodes, {} atoms.".format(ncl*nnd, nat*ncl)
         return t

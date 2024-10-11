@@ -243,7 +243,7 @@ def export_for_atomeye(configuration, f):
         entries = [s[0], s[1], s[2]]
         for aname, afunc in aux:
             entries.append(afunc(i))
-        print(" ".join(f"{i:.1f}" for i in entries), file=f)
+        print(" ".join("{}".format(i) for i in entries), file=f)
 
 
 # This function returns reference 0 point for coloring based on
@@ -392,16 +392,15 @@ def export_as_lammps(configuration, f):
     ## temporary hack: for now i need 4 atom types for 2 species
     #species += ["B", "Ge"]
 
-    print >>f, "%d atom types # %s" % (len(species), " ".join(species))
+    print("{} atom types # {}".format(len(species), species), file=f)
     spmap = dict((i, n+1) for n, i in enumerate(species))
-    print >>f, "0 %.6f xlo xhi" % ort_pbc[0]
-    print >>f, "0 %.6f ylo yhi" % ort_pbc[1]
-    print >>f, "0 %.6f zlo zhi" % ort_pbc[2]
-    print >>f, "\nAtoms\n"
+    print("0 {} xlo xhi".format(ort_pbc[0]), file=f)
+    print("0 {} ylo yhi".format(ort_pbc[1]), file=f)
+    print("0 {} zlo zhi".format(ort_pbc[2]), file=f)
+    print("\nAtoms\n", file=f)
     for n, i in enumerate(configuration.atoms):
-        print >>f, "%d\t%d\t%.7f\t%.7f\t%.7f" % (n+1, spmap[i.name],
-                                           i.pos[0], i.pos[1], i.pos[2])
-
+        print("{}\t{}\t{}\t{}\t{}".format(n+1, spmap[i.name],
+                                           i.pos[0], i.pos[1], i.pos[2]), file=f)
 
 def export_as_poscar(configuration, f):
     "exporting coordinates as VASP POSCAR file"
@@ -411,25 +410,25 @@ def export_as_poscar(configuration, f):
     species = sorted(counts.keys(), reverse=False)
 
     # line 1: a comment (usually the name of the system; we put here elements)
-    print >>f, " ".join(species)
+    print(" ".join(species), file=f)
     # line 2: scaling factor
-    print >>f, "%.15f" % 1
+    print("1", file=f)
     # line 3, 4, 5: the unit cell of the system
     for i in range(3):
-        print >>f, "%19.15f %19.15f %19.15f" % tuple(configuration.pbc[i])
+        print(" {} {} {} ".format(*(configuration.pbc[i])), file=f)
 
     # line 6: the number of atoms per atomic species
     for i in species:
-        print >>f, counts[i],
-    print >>f
+        print(counts[i], file=f)
+    print(" ", file=f)
 
     # optional line
     selective_dynamics = hasattr(configuration.atoms[0], "allow_change")
     if selective_dynamics:
-        print >>f, "Selective dynamics"
+        print("Selective dynamics", file=f)
 
     # line 7: Cartesian/Direct switch
-    print >>f, "Direct"
+    print("Direct", file=f)
 
     # line 8, ...: atom coordinates
     H_1 = linalg.inv(configuration.pbc)
@@ -437,13 +436,13 @@ def export_as_poscar(configuration, f):
         for i in configuration.atoms:
             if i.name == sp:
                 s = numpy.dot(i.pos, H_1) % 1.0
-                line = "%19.15f %19.15f %19.15f" % tuple(s)
+                line ="{} {} {}".format(*s)
                 if selective_dynamics:
                     sd_symbols = { True: 'T', False: 'F' }
-                    line += " %s %s %s" % (sd_symbols[i.allow_change[0]],
+                    line += " {} {} {}".format(sd_symbols[i.allow_change[0]],
                                            sd_symbols[i.allow_change[1]],
                                            sd_symbols[i.allow_change[2]])
-                print >>f, line
+                print(line, file=f)
 
 
 def import_poscar(ifile):
@@ -507,22 +506,20 @@ C Si # cubic SiC""")
 
 def export_as_gulp(configuration, f):
     "export coordinates in GULP input format"
-    print >>f, "opti" # replace this keyword with GULP keywords you need
-    print >>f, ""
-    print >>f, "title"
-    print >>f, configuration.title
-    print >>f, "end"
-    print >>f, ""
-    print >>f, "cell"
+    print("opti", file=f) # replace this keyword with GULP keywords you need
+    print("", file=f)
+    print("title", file=f)
+    print(configuration.title, file=f)
+    print("end", file=f)
+    print("", file=f)
+    print("cell", file=f)
     pbc = get_orthorhombic_pbc(configuration.pbc)
-    print >>f, "%.6g %.6g %.6g %g %g %g" % (pbc[0], pbc[1], pbc[2],
-                                            90., 90., 90.)
-    print >>f, "fractional"
+    print("{} {} {} {} {} {}".format(pbc[0], pbc[1], pbc[2], 90., 90., 90.), file=f)
+    print("fractional", file=f)
     H_1 = linalg.inv(configuration.pbc)
     for i in configuration.atoms:
         s = numpy.dot(i.pos, H_1) % 1.0
-        print >>f, "%s   core %11.6g %11.6g %11.6g    0.0000000  1.0000000" % (
-                                                      i.name, s[0], s[1], s[2])
+        print("{}   core {} {} {}    0.0000000  1.0000000".format(i.name, s[0], s[1], s[2]), file=f)
 
 def get_type_from_filename(name):
     lname = name.lower()

@@ -25,14 +25,14 @@ def get_diamond_node_pos():
 
 def make_lattice(cell, node_pos, node_atoms):
     nodes = [latt.Node(i, node_atoms) for i in node_pos]
-    lattice = latt.CrystalLattice(cell, nodes)
+    lattice = graingen.CrystalLattice(cell, nodes)
     return lattice
 
 
 def make_simple_cubic_lattice(symbol, a):
     cell = latt.CubicUnitCell(a)
     node = latt.Node((0.0, 0.0, 0.0), [(symbol, 0.0, 0.0, 0.0)])
-    return latt.CrystalLattice(cell, [node])
+    return graingen.CrystalLattice(cell, [node])
 
 def make_fcc_lattice(symbol, a):
     cell = latt.CubicUnitCell(a)
@@ -347,12 +347,12 @@ def test_rotmono_adjust():
 
 def mono(lattice, nx, ny, nz):
     min_dim = lattice.unit_cell.get_orthorhombic_supercell()
-    dim = [rotmat.round_to_multiplicity(min_dim[0], 10*nx),
-           rotmat.round_to_multiplicity(min_dim[1], 10*ny),
-           rotmat.round_to_multiplicity(min_dim[2], 10*nz)]
+    dim = [round_to_multiplicity(min_dim[0], 10*nx),
+           round_to_multiplicity(min_dim[1], 10*ny),
+           round_to_multiplicity(min_dim[2], 10*nz)]
     print("dimensions [A]:", dim[0], dim[1], dim[2])
     config = RotatedMonocrystal(deepcopy(lattice), dim, rot_mat=None,
-                                title=utils.get_command_line())
+                                title=get_command_line())
     config.generate_atoms()
     return config
 

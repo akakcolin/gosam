@@ -96,7 +96,7 @@ class Bicrystal(OrthorhombicPbcModel):
         b += [-i for i in b]
         angles = [degrees(calc_angle(u0, i)) for i in b]
         print("angles between upper and bottom:", \
-                ", ".join(f"{i:.1f}" for i in angles))
+                ", ".join("{}".format(i) for i in angles))
 
 
 class BicrystalOptions:
@@ -118,7 +118,7 @@ class BicrystalOptions:
         self.remove_dist2 = None
         self.all = None
         self.allall = None
-        self.lattice_name = "sic"
+        self.lattice_name = "Nb"
         self.lattice_shift = None
         self.edge = None
         self.antiphase = False # unused
